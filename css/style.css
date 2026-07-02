@@ -298,7 +298,6 @@ html, body {
   justify-content: center;
   z-index: 10;
   pointer-events: none;
-  background: rgba(7,6,15,.45);
 }
 #mp-turn-label.hidden { display: none; }
 #mp-turn-text {

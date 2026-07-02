@@ -273,6 +273,8 @@
     mpMyTurn = false;
     mpMyScore = game.score;
     game.remoteState = null;
+    game.shake = 0;
+    game.flash = 0;
     NS.MP.sendTurnEnd(mpMyScore, game.maxCombo);
     setTimeout(function () { NS.MP.sendTurnEnd(mpMyScore, game.maxCombo); }, 500);
     setTimeout(function () { NS.MP.sendTurnEnd(mpMyScore, game.maxCombo); }, 1500);
