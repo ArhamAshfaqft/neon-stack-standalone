@@ -21,14 +21,11 @@
     roomCode = genCode();
     role = "host";
     var id = roomCode.toLowerCase();
-    peer = new Peer(id, { host: "0.peerjs.com", port: 443, path: "/" });
+    peer = new Peer(id, { host: "0.peerjs.com", port: 443, path: "/", secure: true });
     peer.on("open", function () { callbacks.onOpen && callbacks.onOpen(roomCode); });
     peer.on("connection", function (c) {
       conn = c;
-      connected = true;
-      conn.on("data", onMsg);
-      conn.on("close", onClose);
-      callbacks.onConnect && callbacks.onConnect();
+      setupConn();
     });
     peer.on("error", function (e) { console.error("PeerJS:", e); callbacks.onError && callbacks.onError(e); });
     return roomCode;
@@ -38,17 +35,32 @@
     if (peer) disconnect();
     role = "joiner";
     roomCode = code;
-    peer = new Peer({ host: "0.peerjs.com", port: 443, path: "/" });
+    peer = new Peer({ host: "0.peerjs.com", port: 443, path: "/", secure: true });
     peer.on("open", function () {
-      conn = peer.connect(code.toLowerCase());
-      conn.on("open", function () {
-        connected = true;
-        conn.on("data", onMsg);
-        conn.on("close", onClose);
-        callbacks.onConnect && callbacks.onConnect();
-      });
+      conn = peer.connect(code.toLowerCase(), { reliable: true });
+      setupConn();
     });
     peer.on("error", function (e) { console.error("PeerJS:", e); callbacks.onError && callbacks.onError(e); });
+  }
+
+  function setupConn() {
+    function doConnect() {
+      connected = true;
+      conn.on("data", onMsg);
+      conn.on("close", onClose);
+      callbacks.onConnect && callbacks.onConnect();
+    }
+    if (conn && conn.open) {
+      doConnect();
+    } else if (conn) {
+      conn.on("open", doConnect);
+    }
+    setTimeout(function () {
+      if (!connected && conn) {
+        conn.off && conn.off("open", doConnect);
+        callbacks.onError && callbacks.onError(new Error("Connection timeout"));
+      }
+    }, 15000);
   }
 
   function onMsg(data) {
