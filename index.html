@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Neon Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300..700&family=Titan+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <div id="game-area">
+    <canvas id="game"></canvas>
+
+    <div id="ui">
+      <div id="hud">
+        <div id="score">0</div>
+        <div id="best">BEST 0</div>
+        <div id="diff-indicator"></div>
+        <div id="stats-row">
+          <div id="streak-hud"><span class="stat-label">STREAK</span><span class="stat-num" id="streak-num">0</span></div>
+          <div id="perfects-hud"><span class="stat-label">PERFECT</span><span class="stat-num" id="perfects-num">0</span></div>
+        </div>
+      </div>
+
+      <div id="combo-flash"></div>
+
+      <div id="title-screen" class="screen">
+        <h1 class="title">NEON<br>STACK</h1>
+        <p class="subtitle">tap, click or press space</p>
+        <button id="start-btn" class="neon-btn pulse">PLAY</button>
+        <div class="mode-select">
+          <button class="mode-btn" data-mode="easy">Easy</button>
+          <button class="mode-btn active" data-mode="medium">Medium</button>
+          <button class="mode-btn" data-mode="hard">Hard</button>
+        </div>
+        <button id="target-btn" class="neon-btn small-btn">LOCAL 2 PLAYER</button>
+        <button id="mp-btn" class="neon-btn small-btn" style="border-color:#ffaa33;color:#fff8e0;box-shadow:0 0 14px rgba(255,170,51,.4);">ONLINE MP</button>
+        <div class="hint">stack the blocks &middot; perfect drops give bonus</div>
+      </div>
+
+      <div id="game-over" class="screen hidden">
+        <h2 class="go-title">GAME OVER</h2>
+        <div class="scores">
+          <div><span class="label">SCORE</span><span id="final-score" class="value">0</span></div>
+          <div><span class="label">BEST</span><span id="final-best" class="value">0</span></div>
+          <div><span class="label">STREAK</span><span id="final-streak" class="go-streak">0</span></div>
+          <div><span class="label">PERFECTS</span><span id="final-perfects" class="go-perfects">0</span></div>
+        </div>
+        <div class="btn-row">
+          <button id="revive-btn" class="neon-btn accent">REVIVE</button>
+          <button id="retry-btn" class="neon-btn">RETRY</button>
+          <button id="menu-btn-go" class="neon-btn">MENU</button>
+        </div>
+      </div>
+
+      <div id="target-set" class="screen hidden">
+        <h2 class="go-title" style="color:#ffaa33;text-shadow:0 0 24px rgba(255,170,51,.7);">TARGET SET!</h2>
+        <div class="scores">
+          <div><span class="label">SCORE TO BEAT</span><span id="target-display" class="value">0</span></div>
+        </div>
+        <p id="target-turn" class="subtitle">Player 2's turn!</p>
+        <button id="target-play-btn" class="neon-btn">P2 PLAY</button>
+        <button id="target-menu-btn" class="neon-btn">MENU</button>
+      </div>
+
+      <div id="target-result" class="screen hidden">
+        <h2 id="target-result-title" class="go-title" style="color:#5fd0ff;text-shadow:0 0 24px rgba(95,208,255,.7);">RESULT</h2>
+        <div id="target-result-winner" class="subtitle" style="margin-bottom:12px;opacity:1;font-weight:700;letter-spacing:4px;"></div>
+        <div class="scores">
+          <div><span class="label">TARGET</span><span id="result-target" class="value">0</span></div>
+          <div><span class="label">SCORE</span><span id="result-score" class="value">0</span></div>
+        </div>
+        <button id="target-retry-btn" class="neon-btn">PLAY AGAIN</button>
+        <button id="target-menu-btn2" class="neon-btn">MENU</button>
+      </div>
+
+      <div id="mp-lobby" class="screen hidden">
+        <h2 class="go-title" style="color:#ffaa33;text-shadow:0 0 24px rgba(255,170,51,.7);">ONLINE MP</h2>
+        <button id="mp-host-btn" class="neon-btn" style="margin-top:20px;">HOST GAME</button>
+        <p style="margin:18px 0 8px;opacity:.6;letter-spacing:2px;font-size:13px;">— OR JOIN —</p>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input id="mp-join-input" type="text" placeholder="NEON-XXXX" style="font:inherit;padding:12px 16px;border:2px solid #5fd0ff;border-radius:10px;background:rgba(20,16,48,.5);color:#eaffff;text-align:center;text-transform:uppercase;letter-spacing:3px;width:180px;outline:none;">
+          <button id="mp-join-btn" class="neon-btn" style="padding:12px 22px;">JOIN</button>
+        </div>
+        <button id="mp-back-btn" class="neon-btn" style="margin-top:24px;padding:10px 28px;font-size:13px;">BACK</button>
+        <div id="mp-error" style="margin-top:12px;color:#ff5f5f;font-size:13px;letter-spacing:1px;display:none;"></div>
+      </div>
+
+      <div id="mp-waiting" class="screen hidden">
+        <h2 class="go-title" style="color:#ffaa33;text-shadow:0 0 24px rgba(255,170,51,.7);">ROOM CREATED</h2>
+        <p style="margin:14px 0 4px;font-size:13px;letter-spacing:2px;opacity:.6;">SHARE THIS CODE</p>
+        <div id="mp-room-display" style="font-family:'Titan One',sans-serif;font-size:clamp(36px,10vw,64px);color:#ffaa33;text-shadow:0 0 30px rgba(255,170,51,.6);letter-spacing:8px;margin:12px 0;">NEON-XXXX</div>
+        <button id="mp-copy-btn" class="neon-btn" style="margin:8px 0 4px;padding:8px 20px;font-size:12px;letter-spacing:3px;">COPY CODE</button>
+        <p style="opacity:.5;font-size:13px;letter-spacing:2px;">Waiting for opponent...</p>
+        <button id="mp-cancel-btn" class="neon-btn" style="margin-top:30px;padding:10px 28px;font-size:13px;">CANCEL</button>
+      </div>
+
+      <div id="mp-turn-label" class="hidden">
+        <div id="mp-turn-text">PLAYER 1'S TURN</div>
+        <div id="mp-opp-score-label">SCORE</div>
+        <div id="mp-opp-score-full">0</div>
+      </div>
+
+      <div id="mp-result" class="screen hidden">
+        <h2 id="mp-result-title" class="go-title">GAME OVER</h2>
+        <div id="mp-result-winner" class="subtitle" style="margin-bottom:12px;opacity:1;font-weight:700;letter-spacing:4px;"></div>
+        <div class="scores">
+          <div><span class="label">YOU</span><span id="mp-my-score" class="value">0</span></div>
+          <div><span class="label">OPPONENT</span><span id="mp-opp-score" class="value">0</span></div>
+        </div>
+        <button id="mp-again-btn" class="neon-btn">PLAY AGAIN</button>
+        <button id="mp-menu-btn" class="neon-btn">MENU</button>
+      </div>
+
+      <div id="pause-overlay" class="screen hidden">
+        <h2 class="go-title" style="color:#5fd0ff;text-shadow:0 0 24px rgba(95,208,255,.7);">PAUSED</h2>
+        <div class="btn-row">
+          <button id="resume-btn" class="neon-btn">RESUME</button>
+          <button id="menu-btn-pause" class="neon-btn">MENU</button>
+        </div>
+      </div>
+
+      <button id="pause-btn" class="icon-btn" style="left:max(14px,env(safe-area-inset-left));right:auto;" title="Pause (Esc)">❚❚</button>
+      <button id="mute-btn" class="icon-btn" title="Mute (M)"><span id="mute-icon">&#128266;</span></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+<script src="js/multiplayer.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
