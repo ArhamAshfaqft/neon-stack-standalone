@@ -407,23 +407,23 @@ const REF_W = 500;
     ctx.translate(0, -cam);
 
     if (rs) {
-      var sx = rs.W ? this.W / rs.W : 1;
-      var sy = rs.H ? this.H / rs.H : 1;
+      var scaleX = rs.W ? this.W / rs.W : 1;
+      var scaleY = rs.H ? this.H / rs.H : 1;
       for (let i = 0; i < rs.blocks.length; i++) {
         const b = rs.blocks[i];
         const yTop = groundY - (i + 1) * BLOCK_H;
-        this.drawBlock(ctx, b.x * sx, yTop, b.w * sx, BLOCK_H, b.hue, 1);
+        this.drawBlock(ctx, b.x * scaleX, yTop, b.w * scaleX, BLOCK_H, b.hue, 1);
       }
       if (rs.moving && rs.alive) {
         const yTop = groundY - rs.blocks.length * BLOCK_H - BLOCK_H;
-        this.drawBlock(ctx, rs.moving.x * sx, yTop, rs.moving.w * sx, BLOCK_H, rs.moving.hue, 1);
-        this.drawShadow(ctx, rs.moving.x * sx, groundY - rs.blocks.length * BLOCK_H, rs.moving.w * sx, rs.moving.hue);
+        this.drawBlock(ctx, rs.moving.x * scaleX, yTop, rs.moving.w * scaleX, BLOCK_H, rs.moving.hue, 1);
+        this.drawShadow(ctx, rs.moving.x * scaleX, groundY - rs.blocks.length * BLOCK_H, rs.moving.w * scaleX, rs.moving.hue);
       }
       if (rs.falling) {
         ctx.save();
-        ctx.translate(rs.falling.x * sx + rs.falling.w * sx / 2, rs.falling.y * sy + BLOCK_H / 2);
+        ctx.translate(rs.falling.x * scaleX + rs.falling.w * scaleX / 2, rs.falling.y * scaleY + BLOCK_H / 2);
         ctx.rotate(rs.falling.rot || 0);
-        this.drawBlock(ctx, -rs.falling.w * sx / 2, -BLOCK_H / 2, rs.falling.w * sx, BLOCK_H, rs.falling.hue, 1);
+        this.drawBlock(ctx, -rs.falling.w * scaleX / 2, -BLOCK_H / 2, rs.falling.w * scaleX, BLOCK_H, rs.falling.hue, 1);
         ctx.restore();
       }
     } else {
