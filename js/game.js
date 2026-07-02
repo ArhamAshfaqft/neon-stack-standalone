@@ -393,8 +393,16 @@ const REF_W = 500;
     ctx.translate(sx, sy);
 
     var rs = this.remoteState;
-    const cam = rs ? rs.camY : this.camY;
-    const groundY = rs ? rs.groundY : this.groundY;
+    let cam, groundY;
+    if (rs) {
+      groundY = this.groundY;
+      const targetCenterY = this.H * 0.42;
+      const topBlockY = groundY - rs.blocks.length * BLOCK_H - BLOCK_H;
+      cam = Math.min(0, topBlockY - targetCenterY);
+    } else {
+      cam = this.camY;
+      groundY = this.groundY;
+    }
     ctx.save();
     ctx.translate(0, -cam);
 
@@ -526,10 +534,6 @@ const REF_W = 500;
       score: this.score,
       combo: this.combo,
       speed: this.speed,
-      groundY: this.groundY,
-      camY: this.camY,
-      W: this.W,
-      H: this.H,
       alive: this.state === "playing"
     };
   };
