@@ -159,6 +159,12 @@
     },
     onRemoteState: function (state) {
       game.remoteState = state;
+      if (state.snd) {
+        for (var i = 0; i < state.snd.length; i++) {
+          var fn = NS.audio[state.snd[i]];
+          fn && fn();
+        }
+      }
       if (!mpMyTurn) {
         if (mpOppScoreElFull) mpOppScoreElFull.textContent = state.score;
         if (mpDone && mpTurnText) mpTurnText.textContent = (NS.MP.role === "host" ? "PLAYER 2" : "PLAYER 1") + "'S TURN";

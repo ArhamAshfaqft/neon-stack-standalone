@@ -27,6 +27,7 @@ const REF_W = 500;
     this.camYTarget = 0;
     this.shake = 0;
     this.flash = 0;
+    this.mpPendingSounds = [];
     this.score = 0;
     this.combo = 0;
     this.maxCombo = 0;
@@ -201,6 +202,7 @@ const REF_W = 500;
       this.flash = 1;
       this.shake = Math.min(10, 4 + this.combo * 0.6);
       NS.audio && NS.audio.perfect(this.combo);
+      this.mpPendingSounds.push("perfect");
       this.hooks.onCombo && this.hooks.onCombo(this.combo);
       if (this.combo >= 3) NS.sdk && NS.sdk.available && NS.sdk.happytime();
     } else {
@@ -218,6 +220,7 @@ const REF_W = 500;
       });
       this.shake = 3;
       NS.audio && NS.audio.trim();
+      this.mpPendingSounds.push("trim");
     }
 
     this.score++;
@@ -227,6 +230,7 @@ const REF_W = 500;
     }
     this.hooks.onScore && this.hooks.onScore(this.score);
     NS.audio && NS.audio.drop();
+    this.mpPendingSounds.push("drop");
     NS.sdk && NS.sdk.available && NS.sdk.setContext({ score: this.score, combo: this.combo });
 
     this.moving = null;
@@ -243,6 +247,7 @@ const REF_W = 500;
     }
 
     NS.audio && NS.audio.gameOver();
+    this.mpPendingSounds.push("gameOver");
     NS.sdk && NS.sdk.available && NS.sdk.gameplayStop();
 
     if (this.mode === "target") {
@@ -396,8 +401,11 @@ const REF_W = 500;
     let cam, groundY;
     if (rs) {
       groundY = this.groundY;
+      var scaleX = rs.W ? this.W / rs.W : 1;
+      var scaleY = rs.H ? this.H / rs.H : 1;
+      var bh = BLOCK_H * scaleY;
       const targetCenterY = this.H * 0.42;
-      const topBlockY = groundY - rs.blocks.length * BLOCK_H - BLOCK_H;
+      const topBlockY = groundY - rs.blocks.length * bh - bh;
       cam = Math.min(0, topBlockY - targetCenterY);
     } else {
       cam = this.camY;
@@ -407,23 +415,21 @@ const REF_W = 500;
     ctx.translate(0, -cam);
 
     if (rs) {
-      var scaleX = rs.W ? this.W / rs.W : 1;
-      var scaleY = rs.H ? this.H / rs.H : 1;
       for (let i = 0; i < rs.blocks.length; i++) {
         const b = rs.blocks[i];
-        const yTop = groundY - (i + 1) * BLOCK_H;
-        this.drawBlock(ctx, b.x * scaleX, yTop, b.w * scaleX, BLOCK_H, b.hue, 1);
+        const yTop = groundY - (i + 1) * bh;
+        this.drawBlock(ctx, b.x * scaleX, yTop, b.w * scaleX, bh, b.hue, 1);
       }
       if (rs.moving && rs.alive) {
-        const yTop = groundY - rs.blocks.length * BLOCK_H - BLOCK_H;
-        this.drawBlock(ctx, rs.moving.x * scaleX, yTop, rs.moving.w * scaleX, BLOCK_H, rs.moving.hue, 1);
-        this.drawShadow(ctx, rs.moving.x * scaleX, groundY - rs.blocks.length * BLOCK_H, rs.moving.w * scaleX, rs.moving.hue);
+        const yTop = groundY - rs.blocks.length * bh - bh;
+        this.drawBlock(ctx, rs.moving.x * scaleX, yTop, rs.moving.w * scaleX, bh, rs.moving.hue, 1);
+        this.drawShadow(ctx, rs.moving.x * scaleX, groundY - rs.blocks.length * bh, rs.moving.w * scaleX, rs.moving.hue);
       }
       if (rs.falling) {
         ctx.save();
-        ctx.translate(rs.falling.x * scaleX + rs.falling.w * scaleX / 2, rs.falling.y * scaleY + BLOCK_H / 2);
+        ctx.translate(rs.falling.x * scaleX + rs.falling.w * scaleX / 2, rs.falling.y * scaleY + bh / 2);
         ctx.rotate(rs.falling.rot || 0);
-        this.drawBlock(ctx, -rs.falling.w * scaleX / 2, -BLOCK_H / 2, rs.falling.w * scaleX, BLOCK_H, rs.falling.hue, 1);
+        this.drawBlock(ctx, -rs.falling.w * scaleX / 2, -bh / 2, rs.falling.w * scaleX, bh, rs.falling.hue, 1);
         ctx.restore();
       }
     } else {
@@ -529,6 +535,8 @@ const REF_W = 500;
   };
 
   Game.prototype.getState = function () {
+    var snd = this.mpPendingSounds;
+    this.mpPendingSounds = [];
     return {
       W: this.W,
       H: this.H,
@@ -538,7 +546,8 @@ const REF_W = 500;
       score: this.score,
       combo: this.combo,
       speed: this.speed,
-      alive: this.state === "playing"
+      alive: this.state === "playing",
+      snd: snd
     };
   };
 
