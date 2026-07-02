@@ -56,6 +56,7 @@
   var mpBtn = $("mp-btn"), mpTurnLabel = $("mp-turn-label"), mpTurnText = $("mp-turn-text"), mpOppScoreElFull = $("mp-opp-score-full");
   var mpCopyBtn = $("mp-copy-btn");
   var mpRematchStatus = $("mp-rematch-status"), mpRematchPrompt = $("mp-rematch-prompt");
+  var mpLastStateSend = 0;
   var mpRematchAccept = $("mp-rematch-accept"), mpRematchDecline = $("mp-rematch-decline");
   var rematchRequested = false;
 
@@ -166,16 +167,17 @@
     onTurnEnd: function (score, combo) {
       mpOppScore = score;
       game.remoteState = null;
-      if (!mpDone) {
+      if (!mpDone && !mpMyTurn) {
         mpMyTurn = true;
         startMpRun();
-      } else if (NS.MP.role === "host") {
+      } else if (mpDone && NS.MP.role === "host") {
         var won = mpMyScore >= mpOppScore;
         NS.MP.sendGameOver(won ? "host" : "joiner", mpMyScore, mpOppScore);
         showMpResult(won);
       }
     },
     onGameOver: function (winner, hs, js) {
+      if (!mpResult.classList.contains("hidden")) return;
       mpMyScore = NS.MP.role === "host" ? hs : js;
       mpOppScore = NS.MP.role === "host" ? js : hs;
       showMpResult(winner === (NS.MP.role === "host" ? "host" : "joiner"));
@@ -257,7 +259,11 @@
   function mpLoop() {
     if (!NS.MP.connected) { mpRaf = null; return; }
     if (mpMyTurn && game.state === "playing") {
-      NS.MP.sendState(game.getState());
+      var now = performance.now();
+      if (now - mpLastStateSend > 50) {
+        mpLastStateSend = now;
+        NS.MP.sendState(game.getState());
+      }
     }
     mpRaf = requestAnimationFrame(mpLoop);
   }
@@ -268,6 +274,8 @@
     mpMyScore = game.score;
     game.remoteState = null;
     NS.MP.sendTurnEnd(mpMyScore, game.maxCombo);
+    setTimeout(function () { NS.MP.sendTurnEnd(mpMyScore, game.maxCombo); }, 500);
+    setTimeout(function () { NS.MP.sendTurnEnd(mpMyScore, game.maxCombo); }, 1500);
     hud.classList.remove("show");
     pauseBtn.style.display = "none";
     if (mpTurnLabel) mpTurnLabel.classList.remove("hidden");
