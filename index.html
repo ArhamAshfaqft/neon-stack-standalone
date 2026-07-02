@@ -111,8 +111,16 @@
           <div><span class="label">YOU</span><span id="mp-my-score" class="value">0</span></div>
           <div><span class="label">OPPONENT</span><span id="mp-opp-score" class="value">0</span></div>
         </div>
-        <button id="mp-again-btn" class="neon-btn">PLAY AGAIN</button>
+        <button id="mp-again-btn" class="neon-btn">REQUEST REMATCH</button>
         <button id="mp-menu-btn" class="neon-btn">MENU</button>
+        <div id="mp-rematch-status" style="margin-top:16px;font-size:13px;letter-spacing:2px;opacity:.7;display:none;">Waiting for opponent's response...</div>
+        <div id="mp-rematch-prompt" style="margin-top:16px;display:none;">
+          <p style="margin-bottom:10px;font-size:14px;letter-spacing:2px;">Opponent wants a rematch!</p>
+          <div style="display:flex;gap:12px;justify-content:center;">
+            <button id="mp-rematch-accept" class="neon-btn" style="padding:10px 24px;">ACCEPT</button>
+            <button id="mp-rematch-decline" class="neon-btn" style="padding:10px 24px;">DECLINE</button>
+          </div>
+        </div>
       </div>
 
       <div id="pause-overlay" class="screen hidden">

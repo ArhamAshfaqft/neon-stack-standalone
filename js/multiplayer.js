@@ -63,6 +63,15 @@
       case "over":
         callbacks.onGameOver && callbacks.onGameOver(data.w, data.hs, data.js);
         break;
+      case "rematch_req":
+        callbacks.onRematchRequest && callbacks.onRematchRequest();
+        break;
+      case "rematch_accept":
+        callbacks.onRematchAccept && callbacks.onRematchAccept();
+        break;
+      case "rematch_decline":
+        callbacks.onRematchDecline && callbacks.onRematchDecline();
+        break;
     }
   }
 
@@ -86,6 +95,19 @@
     conn.send({ t: "over", w: winner, hs: hostScore, js: joinerScore });
   }
 
+  function sendRematchRequest() {
+    if (!conn || !connected) return;
+    conn.send({ t: "rematch_req" });
+  }
+  function sendRematchAccept() {
+    if (!conn || !connected) return;
+    conn.send({ t: "rematch_accept" });
+  }
+  function sendRematchDecline() {
+    if (!conn || !connected) return;
+    conn.send({ t: "rematch_decline" });
+  }
+
   function disconnect() {
     if (conn) conn.close();
     if (peer) peer.destroy();
@@ -100,6 +122,9 @@
     sendState: sendState,
     sendTurnEnd: sendTurnEnd,
     sendGameOver: sendGameOver,
+    sendRematchRequest: sendRematchRequest,
+    sendRematchAccept: sendRematchAccept,
+    sendRematchDecline: sendRematchDecline,
     disconnect: disconnect,
     get connected() { return connected; },
     get role() { return role; },

@@ -55,6 +55,9 @@
   var mpMyScoreEl = $("mp-my-score"), mpOppScoreEl = $("mp-opp-score");
   var mpBtn = $("mp-btn"), mpTurnLabel = $("mp-turn-label"), mpTurnText = $("mp-turn-text"), mpOppScoreElFull = $("mp-opp-score-full");
   var mpCopyBtn = $("mp-copy-btn");
+  var mpRematchStatus = $("mp-rematch-status"), mpRematchPrompt = $("mp-rematch-prompt");
+  var mpRematchAccept = $("mp-rematch-accept"), mpRematchDecline = $("mp-rematch-decline");
+  var rematchRequested = false;
 
   const game = new NS.Game(canvas, {
     onScore: function (s) {
@@ -181,6 +184,32 @@
       mpError.textContent = "Connection failed. Try again.";
       mpError.style.display = "block";
     },
+    onRematchRequest: function () {
+      if (rematchRequested) return;
+      mpRematchStatus.style.display = "none";
+      mpRematchPrompt.style.display = "";
+      mpAgainBtn.style.display = "none";
+    },
+    onRematchAccept: function () {
+      mpRematchPrompt.style.display = "none";
+      mpRematchStatus.style.display = "none";
+      mpAgainBtn.style.display = "";
+      rematchRequested = false;
+      mpMyTurn = NS.MP.role === "host";
+      mpDone = false;
+      startMpGame();
+    },
+    onRematchDecline: function () {
+      mpRematchPrompt.style.display = "none";
+      mpAgainBtn.style.display = "";
+      if (rematchRequested) {
+        mpRematchStatus.textContent = "Rematch declined.";
+        mpRematchStatus.style.color = "#ff5f5f";
+        mpRematchStatus.style.display = "";
+        rematchRequested = false;
+        mpAgainBtn.textContent = "REQUEST REMATCH";
+      }
+    },
     onDisconnect: function () {
       if (!mpResult.classList.contains("hidden")) return;
       mpError.textContent = "Opponent disconnected.";
@@ -248,7 +277,15 @@
   function showMpResult(won) {
     mpRaf = null; mpMyTurn = false;
     game.remoteState = null;
+    rematchRequested = false;
     mpTurnLabel && mpTurnLabel.classList.add("hidden");
+    mpRematchStatus && (mpRematchStatus.style.display = "none");
+    mpRematchStatus && (mpRematchStatus.textContent = "Waiting for opponent's response...");
+    mpRematchStatus && (mpRematchStatus.style.color = "");
+    mpRematchPrompt && (mpRematchPrompt.style.display = "none");
+    mpAgainBtn && (mpAgainBtn.style.display = "");
+    mpAgainBtn && (mpAgainBtn.textContent = "REQUEST REMATCH");
+    mpError && (mpError.style.display = "none");
     hud.classList.remove("show");
     pauseBtn.style.display = "none";
     hideScreens();
@@ -438,9 +475,26 @@
   mpAgainBtn.addEventListener("click", function (e) {
     e.stopPropagation();
     NS.audio.click();
+    rematchRequested = true;
+    mpAgainBtn.style.display = "none";
+    mpRematchStatus.style.display = "";
+    NS.MP.sendRematchRequest();
+  });
+  mpRematchAccept.addEventListener("click", function (e) {
+    e.stopPropagation();
+    NS.audio.click();
+    mpRematchPrompt.style.display = "none";
+    NS.MP.sendRematchAccept();
     mpMyTurn = NS.MP.role === "host";
     mpDone = false;
     startMpGame();
+  });
+  mpRematchDecline.addEventListener("click", function (e) {
+    e.stopPropagation();
+    NS.audio.click();
+    mpRematchPrompt.style.display = "none";
+    mpAgainBtn.style.display = "";
+    NS.MP.sendRematchDecline();
   });
   mpMenuBtn.addEventListener("click", function (e) {
     e.stopPropagation();
