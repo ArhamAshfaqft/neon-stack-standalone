@@ -2,132 +2,95 @@
   "use strict";
   window.NS = window.NS || {};
 
-  var peer = null, conn = null, roomCode = null, role = null, connected = false, remoteState = null;
+  var ws = null, roomCode = null, role = null, connected = false, remoteState = null;
   var callbacks = {};
+  var reconnectTimer = null;
 
-  var PEER_CONFIG = {
-    host: "0.peerjs.com", port: 443, path: "/", secure: true,
-    config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" }
-      ]
-    }
-  };
+  var SERVER = "wss://neon-stack-server.onrender.com";
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    SERVER = "ws://localhost:3000";
+  }
 
   function init(cb) { callbacks = cb || {}; }
 
-  function genCode() {
-    var c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = "";
-    for (var i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)];
-    return "NEON-" + s;
-  }
-
-  function host() {
-    if (peer) disconnect();
-    roomCode = genCode();
-    role = "host";
-    var id = roomCode.toLowerCase();
-    peer = new Peer(id, PEER_CONFIG);
-    peer.on("open", function () { callbacks.onOpen && callbacks.onOpen(roomCode); });
-    peer.on("connection", function (c) {
-      conn = c;
+  function connect() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
+    try { ws = new WebSocket(SERVER); } catch (e) { callbacks.onError && callbacks.onError(e); return; }
+    ws.onopen = function () {
       connected = true;
-      conn.on("data", onMsg);
-      conn.on("close", onClose);
-      callbacks.onConnect && callbacks.onConnect();
-    });
-    peer.on("error", function (e) { console.error("PeerJS:", e); callbacks.onError && callbacks.onError(e); });
-    return roomCode;
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      if (role === "host") { ws.send(JSON.stringify({ type: "host" })); }
+      else if (role === "joiner" && roomCode) { ws.send(JSON.stringify({ type: "join", room: roomCode })); }
+    };
+    ws.onmessage = function (e) {
+      var msg;
+      try { msg = JSON.parse(e.data); } catch (err) { return; }
+      switch (msg.type) {
+        case "hosted":
+          roomCode = msg.room;
+          callbacks.onOpen && callbacks.onOpen(roomCode);
+          break;
+        case "joined":
+          roomCode = msg.room;
+          callbacks.onConnect && callbacks.onConnect();
+          break;
+        case "opponent_joined":
+          callbacks.onConnect && callbacks.onConnect();
+          break;
+        case "state":
+          remoteState = msg.data;
+          callbacks.onRemoteState && callbacks.onRemoteState(remoteState);
+          break;
+        case "turnEnd":
+          callbacks.onTurnEnd && callbacks.onTurnEnd(msg.score, msg.combo);
+          break;
+        case "gameOver":
+          callbacks.onGameOver && callbacks.onGameOver(msg.winner, msg.hs, msg.js);
+          break;
+        case "rematchReq":
+          callbacks.onRematchRequest && callbacks.onRematchRequest();
+          break;
+        case "rematchAccept":
+          callbacks.onRematchAccept && callbacks.onRematchAccept();
+          break;
+        case "rematchDecline":
+          callbacks.onRematchDecline && callbacks.onRematchDecline();
+          break;
+        case "opponent_left":
+          callbacks.onDisconnect && callbacks.onDisconnect();
+          break;
+        case "error":
+          callbacks.onError && callbacks.onError(new Error(msg.msg));
+          break;
+      }
+    };
+    ws.onclose = function () {
+      connected = false;
+      if (role) { reconnectTimer = setTimeout(function () { if (role) connect(); }, 2000); }
+    };
+    ws.onerror = function () {};
   }
 
-  function join(code) {
-    if (peer) disconnect();
-    role = "joiner";
-    roomCode = code;
-    peer = new Peer(PEER_CONFIG);
-    peer.on("open", function () {
-      conn = peer.connect(code.toLowerCase());
-      var opened = false;
-      var timeout = setTimeout(function () {
-        if (!opened) {
-          callbacks.onError && callbacks.onError(new Error("Connection timed out"));
-        }
-      }, 15000);
-      conn.on("open", function () {
-        opened = true;
-        clearTimeout(timeout);
-        connected = true;
-        conn.on("data", onMsg);
-        conn.on("close", onClose);
-        callbacks.onConnect && callbacks.onConnect();
-      });
-    });
-    peer.on("error", function (e) { console.error("PeerJS:", e); callbacks.onError && callbacks.onError(e); });
+  function host() { disconnect(); role = "host"; connect(); }
+
+  function join(code) { disconnect(); role = "joiner"; roomCode = code; connect(); }
+
+  function send(type, data) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify(Object.assign({ type: type }, data)));
   }
 
-  function onMsg(data) {
-    switch (data.t) {
-      case "s":
-        remoteState = data.d;
-        callbacks.onRemoteState && callbacks.onRemoteState(remoteState);
-        break;
-      case "done":
-        callbacks.onTurnEnd && callbacks.onTurnEnd(data.s, data.c);
-        break;
-      case "over":
-        callbacks.onGameOver && callbacks.onGameOver(data.w, data.hs, data.js);
-        break;
-      case "rematch_req":
-        callbacks.onRematchRequest && callbacks.onRematchRequest();
-        break;
-      case "rematch_accept":
-        callbacks.onRematchAccept && callbacks.onRematchAccept();
-        break;
-      case "rematch_decline":
-        callbacks.onRematchDecline && callbacks.onRematchDecline();
-        break;
-    }
-  }
-
-  function onClose() {
-    connected = false;
-    callbacks.onDisconnect && callbacks.onDisconnect();
-  }
-
-  function sendState(state) {
-    if (!conn || !connected) return;
-    conn.send({ t: "s", d: state });
-  }
-
-  function sendTurnEnd(score, maxCombo) {
-    if (!conn || !connected) return;
-    conn.send({ t: "done", s: score, c: maxCombo });
-  }
-
-  function sendGameOver(winner, hostScore, joinerScore) {
-    if (!conn || !connected) return;
-    conn.send({ t: "over", w: winner, hs: hostScore, js: joinerScore });
-  }
-
-  function sendRematchRequest() {
-    if (!conn || !connected) return;
-    conn.send({ t: "rematch_req" });
-  }
-  function sendRematchAccept() {
-    if (!conn || !connected) return;
-    conn.send({ t: "rematch_accept" });
-  }
-  function sendRematchDecline() {
-    if (!conn || !connected) return;
-    conn.send({ t: "rematch_decline" });
-  }
+  function sendState(state) { send("state", { data: state }); }
+  function sendTurnEnd(score, combo) { send("turnEnd", { score: score, combo: combo }); }
+  function sendGameOver(winner, hs, js) { send("gameOver", { winner: winner, hs: hs, js: js }); }
+  function sendRematchRequest() { send("rematchReq", {}); }
+  function sendRematchAccept() { send("rematchAccept", {}); }
+  function sendRematchDecline() { send("rematchDecline", {}); }
 
   function disconnect() {
-    if (conn) conn.close();
-    if (peer) peer.destroy();
-    peer = null; conn = null; connected = false; remoteState = null;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (ws) { ws.onclose = null; ws.close(); ws = null; }
+    connected = false; remoteState = null;
     roomCode = null; role = null;
   }
 
