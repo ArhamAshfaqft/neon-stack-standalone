@@ -104,6 +104,7 @@
     get connected() { return connected; },
     get role() { return role; },
     get roomCode() { return roomCode; },
-    get remoteState() { return remoteState; }
+    get remoteState() { return remoteState; },
+    bufferedAmount: function () { return ws ? ws.bufferedAmount : 0; }
   };
 })();

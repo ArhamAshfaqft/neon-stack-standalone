@@ -56,7 +56,7 @@
   var mpBtn = $("mp-btn"), mpTurnLabel = $("mp-turn-label"), mpTurnText = $("mp-turn-text"), mpOppScoreElFull = $("mp-opp-score-full");
   var mpCopyBtn = $("mp-copy-btn");
   var mpRematchStatus = $("mp-rematch-status"), mpRematchPrompt = $("mp-rematch-prompt");
-  var mpLastStateSend = 0;
+
   var mpRematchAccept = $("mp-rematch-accept"), mpRematchDecline = $("mp-rematch-decline");
   var rematchRequested = false;
 
@@ -259,9 +259,7 @@
   function mpLoop() {
     if (!NS.MP.connected) { mpRaf = null; return; }
     if (mpMyTurn && game.state === "playing") {
-      var now = performance.now();
-      if (now - mpLastStateSend > 50) {
-        mpLastStateSend = now;
+      if (NS.MP.bufferedAmount() < 65536) {
         NS.MP.sendState(game.getState());
       }
     }
