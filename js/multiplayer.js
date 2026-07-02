@@ -4,11 +4,19 @@
 
   var peer = null, conn = null, roomCode = null, role = null, connected = false, remoteState = null;
   var callbacks = {};
-  var BLOCK_H = 30;
 
-  function init(cb) {
-    callbacks = cb || {};
-  }
+  var PEER_CONFIG = {
+    host: "0.peerjs.com", port: 443, path: "/", secure: true,
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" }
+      ]
+    }
+  };
+
+  function init(cb) { callbacks = cb || {}; }
 
   function genCode() {
     var c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = "";
@@ -21,11 +29,14 @@
     roomCode = genCode();
     role = "host";
     var id = roomCode.toLowerCase();
-    peer = new Peer(id, { host: "0.peerjs.com", port: 443, path: "/", secure: true });
+    peer = new Peer(id, PEER_CONFIG);
     peer.on("open", function () { callbacks.onOpen && callbacks.onOpen(roomCode); });
     peer.on("connection", function (c) {
       conn = c;
-      setupConn();
+      connected = true;
+      conn.on("data", onMsg);
+      conn.on("close", onClose);
+      callbacks.onConnect && callbacks.onConnect();
     });
     peer.on("error", function (e) { console.error("PeerJS:", e); callbacks.onError && callbacks.onError(e); });
     return roomCode;
@@ -35,32 +46,25 @@
     if (peer) disconnect();
     role = "joiner";
     roomCode = code;
-    peer = new Peer({ host: "0.peerjs.com", port: 443, path: "/", secure: true });
+    peer = new Peer(PEER_CONFIG);
     peer.on("open", function () {
-      conn = peer.connect(code.toLowerCase(), { reliable: true });
-      setupConn();
+      conn = peer.connect(code.toLowerCase());
+      var opened = false;
+      var timeout = setTimeout(function () {
+        if (!opened) {
+          callbacks.onError && callbacks.onError(new Error("Connection timed out"));
+        }
+      }, 15000);
+      conn.on("open", function () {
+        opened = true;
+        clearTimeout(timeout);
+        connected = true;
+        conn.on("data", onMsg);
+        conn.on("close", onClose);
+        callbacks.onConnect && callbacks.onConnect();
+      });
     });
     peer.on("error", function (e) { console.error("PeerJS:", e); callbacks.onError && callbacks.onError(e); });
-  }
-
-  function setupConn() {
-    function doConnect() {
-      connected = true;
-      conn.on("data", onMsg);
-      conn.on("close", onClose);
-      callbacks.onConnect && callbacks.onConnect();
-    }
-    if (conn && conn.open) {
-      doConnect();
-    } else if (conn) {
-      conn.on("open", doConnect);
-    }
-    setTimeout(function () {
-      if (!connected && conn) {
-        conn.off && conn.off("open", doConnect);
-        callbacks.onError && callbacks.onError(new Error("Connection timeout"));
-      }
-    }, 15000);
   }
 
   function onMsg(data) {
@@ -128,12 +132,8 @@
   }
 
   NS.MP = {
-    init: init,
-    host: host,
-    join: join,
-    sendState: sendState,
-    sendTurnEnd: sendTurnEnd,
-    sendGameOver: sendGameOver,
+    init: init, host: host, join: join,
+    sendState: sendState, sendTurnEnd: sendTurnEnd, sendGameOver: sendGameOver,
     sendRematchRequest: sendRematchRequest,
     sendRematchAccept: sendRematchAccept,
     sendRematchDecline: sendRematchDecline,
